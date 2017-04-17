@@ -12,7 +12,9 @@ settings.defaultSettings = {
 	['banReason'] = "You are currently banned. Please go to: insertsite.com/bans",
 	['pvpEnabled'] = false,
 	['permissionDenied'] = false,
-	['debugInformation'] = false
+	['debugInformation'] = false,
+	['startingCash'] = 0,
+	['enableRankDecorators'] = false
 }
 settings.sessionSettings = {}
 
@@ -40,7 +42,14 @@ AddEventHandler('playerConnecting', function(name, setCallback)
 end)
 
 AddEventHandler('playerDropped', function()
-	Users[source] = nil
+	if(Users[source])then
+		TriggerEvent("es:playerDropped", Users[source])
+
+		MySQL:executeQuery("UPDATE users SET `money`='@value' WHERE identifier = '@identifier'",
+		{['@value'] = Users[source].money, ['@identifier'] = Users[source].identifier})
+
+		Users[source] = nil
+	end
 end)
 
 local justJoined = {}
@@ -102,7 +111,7 @@ AddEventHandler('chatMessage', function(source, n, message)
 		if(command)then
 			CancelEvent()
 			if(command.perm > 0)then
-				if(Users[source]['permission_level'] >= command.perm)then
+				if(Users[source].permission_level >= command.perm or Users[source].group:canTarget(command.group))then
 					command.cmd(source, command_args, Users[source])
 					TriggerEvent("es:adminCommandRan", source, command_args, Users[source])
 				else
@@ -136,6 +145,7 @@ end)
 AddEventHandler('es:addCommand', function(command, callback)
 	commands[command] = {}
 	commands[command].perm = 0
+	commands[command].group = "user"
 	commands[command].cmd = callback
 
 	debugMsg("Command added: " .. command)
@@ -144,16 +154,27 @@ end)
 AddEventHandler('es:addAdminCommand', function(command, perm, callback, callbackfailed)
 	commands[command] = {}
 	commands[command].perm = perm
+	commands[command].group = "superadmin"
 	commands[command].cmd = callback
 	commands[command].callbackfailed = callbackfailed
 
 	debugMsg("Admin command added: " .. command .. ", requires permission level: " .. perm)
 end)
 
+AddEventHandler('es:addGroupCommand', function(command, group, callback, callbackfailed)
+	commands[command] = {}
+	commands[command].perm = math.maxinteger
+	commands[command].group = group
+	commands[command].cmd = callback
+	commands[command].callbackfailed = callbackfailed
+
+	debugMsg("Group command added: " .. command .. ", requires group: " .. group)
+end)
+
 RegisterServerEvent('es:updatePositions')
 AddEventHandler('es:updatePositions', function(x, y, z)
 	if(Users[source])then
-		Users[source].coords = {['x'] = x, ['y'] = y, ['z'] = z}
+		Users[source]:setCoords(x, y, z)
 	end
 end)
 
@@ -161,6 +182,6 @@ end)
 commands['info'] = {}
 commands['info'].perm = 0
 commands['info'].cmd = function(source, args, user)
-	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^21.1.0")
+	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^22.0.0")
 	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Commands loaded: ^2" .. (returnIndexesInTable(commands) - 1))
 end

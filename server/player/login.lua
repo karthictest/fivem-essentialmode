@@ -9,13 +9,22 @@ require "resources/essentialmode/lib/MySQL"
 -- MySQL:open("IP", "databasname", "user", "password")
 MySQL:open("127.0.0.1", "gta5_gamemode_essential", "root", "1202")
 
-function LoadUser(identifier, source)
+function LoadUser(identifier, source, new)
 	local executed_query = MySQL:executeQuery("SELECT * FROM users WHERE identifier = '@name'", {['@name'] = identifier})
-	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier'}, "identifier")
+	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier', 'group'}, "identifier")
 
-	Users[source] = result[1]
+	local group = groups[result[1].group]
+	Users[source] = Player(source, result[1].permission_level, result[1].money, result[1].identifier, group)
 
 	TriggerEvent('es:playerLoaded', source, Users[source])
+
+	if(true)then
+		TriggerClientEvent('es:setPlayerDecorator', source, 'rank', Users[source]:getPermissions())
+	end
+
+	if(true)then
+		TriggerEvent('es:newPlayerLoaded', source, Users[source])
+	end
 end
 
 function stringsplit(self, delimiter)
@@ -74,10 +83,10 @@ end
 function registerUser(identifier, source)
 	if not hasAccount(identifier) then
 		-- Inserting Default User Account Stats
-		MySQL:executeQuery("INSERT INTO users (`identifier`, `permission_level`, `money`) VALUES ('@username', '0', '0')",
-		{['@username'] = identifier})
+		MySQL:executeQuery("INSERT INTO users (`identifier`, `permission_level`, `money`, `group`) VALUES ('@username', '0', '@money', 'user')",
+		{['@username'] = identifier, ['@money'] = settings.defaultSettings.startingCash})
 
-		LoadUser(identifier, source)
+		LoadUser(identifier, source, true)
 	else
 		LoadUser(identifier, source)
 	end
@@ -85,11 +94,18 @@ end
 
 AddEventHandler("es:setPlayerData", function(user, k, v, cb)
 	if(Users[user])then
-			if(Users[user][k])then
-			MySQL:executeQuery("UPDATE users SET @key='@value' WHERE identifier = '@identifier'",
-		    {['@key'] = k, ['@value'] = v, ['@identifier'] = Users[user]['identifier']})
+		if(Users[user][k])then
 
-			Users[user][k] = v
+			if(k ~= "money") then
+				Users[user][k] = v
+
+				MySQL:executeQuery("UPDATE users SET `@key`='@value' WHERE identifier = '@identifier'",
+			    {['@key'] = k, ['@value'] = v, ['@identifier'] = Users[user]['identifier']})
+			end
+
+			if(k == "group")then
+				Users[user].group = groups[v]
+			end
 
 			cb("Player data edited.", true)
 		else
@@ -121,7 +137,7 @@ end)
 
 AddEventHandler("es:getPlayerFromIdentifier", function(identifier, cb)
 	local executed_query = MySQL:executeQuery("SELECT * FROM users WHERE identifier = '@name'", {['@name'] = identifier})
-	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier'}, "identifier")
+	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier', 'group'}, "identifier")
 
 	if(result[1])then
 		cb(result[1])
@@ -132,7 +148,7 @@ end)
 
 AddEventHandler("es:getAllPlayers", function(cb)
 	local executed_query = MySQL:executeQuery("SELECT * FROM users", {})
-	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier'}, "identifier")
+	local result = MySQL:getResults(executed_query, {'permission_level', 'money', 'identifier', 'group'}, "identifier")
 
 	if(result)then
 		cb(result)
@@ -140,3 +156,19 @@ AddEventHandler("es:getAllPlayers", function(cb)
 		cb(nil)
 	end
 end)
+
+-- Function to update player money every 60 seconds.
+local function savePlayerMoney()
+	SetTimeout(60000, function()
+		TriggerEvent("es:getPlayers", function(users)
+			for k,v in pairs(users)do
+				MySQL:executeQuery("UPDATE users SET `money`='@value' WHERE identifier = '@identifier'",
+			    {['@value'] = v.money, ['@identifier'] = v.identifier})
+			end
+		end)
+
+		savePlayerMoney()
+	end)
+end
+
+savePlayerMoney()
