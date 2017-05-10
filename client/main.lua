@@ -20,7 +20,7 @@ local oldPos
 
 Citizen.CreateThread(function()
 	while true do
-		Citizen.Wait(3000)
+		Citizen.Wait(1000)
 		local pos = GetEntityCoords(GetPlayerPed(-1))
 
 		if(oldPos ~= pos)then
@@ -37,6 +37,32 @@ Citizen.CreateThread(function()
 			oldPos = pos
 		end
 	end
+end)
+
+local myDecorators = {}
+
+RegisterNetEvent("es:setPlayerDecorator")
+AddEventHandler("es:setPlayerDecorator", function(key, value, doNow)
+	myDecorators[key] = value
+	DecorRegister(key, 3)
+
+	if(doNow)then
+		DecorSetInt(GetPlayerPed(-1), key, value)
+	end
+end)
+
+AddEventHandler("playerSpawned", function()
+	for k,v in pairs(myDecorators)do
+		DecorSetInt(GetPlayerPed(-1), k, v)
+	end
+end)
+
+RegisterNetEvent('es:setMoneyIcon')
+AddEventHandler('es:setMoneyIcon', function(i)
+	SendNUIMessage({
+		seticon = true,
+		icon = i
+	})
 end)
 
 RegisterNetEvent('es:activateMoney')

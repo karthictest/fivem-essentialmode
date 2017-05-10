@@ -9,59 +9,34 @@ Users = {}
 commands = {}
 settings = {}
 settings.defaultSettings = {
-	['banReason'] = "You are currently banned. Please go to: insertsite.com/bans",
 	['pvpEnabled'] = false,
 	['permissionDenied'] = false,
-	['debugInformation'] = false
+	['debugInformation'] = false,
+	['startingCash'] = 0,
+	['enableRankDecorators'] = false,
+	['moneyIcon'] = "$"
 }
 settings.sessionSettings = {}
 
-require "resources/essentialmode/lib/MySQL"
-
-AddEventHandler('playerConnecting', function(name, setCallback)
-	local identifiers = GetPlayerIdentifiers(source)
-
-	for i = 1, #identifiers do
-		local identifier = identifiers[i]
-		debugMsg('Checking user ban: ' .. identifier .. " (" .. name .. ")")
-
-		local banned = isIdentifierBanned(identifier)
-		if(banned)then
-			if(type(settings.defaultSettings.banreason) == "string")then
-				setCallback(settings.defaultSettings.banreason)
-			elseif(type(settings.defaultSettings.banreason) == "function")then
-				setCallback(settings.defaultSettings.banreason(identifier, name))
-			else
-				setCallback("Default ban reason error")
-			end
-			CancelEvent()
-		end
-	end
-end)
-
 AddEventHandler('playerDropped', function()
-	Users[source] = nil
+	if(Users[source])then
+		TriggerEvent("es:playerDropped", Users[source])
+
+		db.updateUser(Users[source].identifier, {money = Users[source].money, Users[source].bank}, function()
+			Users[source] = nil
+		end)
+	end
 end)
 
 local justJoined = {}
 
 RegisterServerEvent('es:firstJoinProper')
 AddEventHandler('es:firstJoinProper', function()
-	local identifiers = GetPlayerIdentifiers(source)
-	for i = 1, #identifiers do
-		if(Users[source] == nil)then
-			debugMsg("Essential | Loading user: " .. GetPlayerName(source))
+	registerUser(GetPlayerIdentifiers(source)[1], source)
+	justJoined[source] = true
 
-			local identifier = identifiers[i]
-			registerUser(identifier, source)
-
-			TriggerEvent('es:initialized', source)
-			justJoined[source] = true
-
-			if(settings.defaultSettings.pvpEnabled)then
-				TriggerClientEvent("es:enablePvp", source)
-			end
-		end
+	if(settings.defaultSettings.pvpEnabled)then
+		TriggerClientEvent("es:enablePvp", source)
 	end
 end)
 
@@ -102,7 +77,7 @@ AddEventHandler('chatMessage', function(source, n, message)
 		if(command)then
 			CancelEvent()
 			if(command.perm > 0)then
-				if(Users[source]['permission_level'] >= command.perm)then
+				if(Users[source].permission_level >= command.perm or Users[source].group:canTarget(command.group))then
 					command.cmd(source, command_args, Users[source])
 					TriggerEvent("es:adminCommandRan", source, command_args, Users[source])
 				else
@@ -136,6 +111,7 @@ end)
 AddEventHandler('es:addCommand', function(command, callback)
 	commands[command] = {}
 	commands[command].perm = 0
+	commands[command].group = "user"
 	commands[command].cmd = callback
 
 	debugMsg("Command added: " .. command)
@@ -144,16 +120,27 @@ end)
 AddEventHandler('es:addAdminCommand', function(command, perm, callback, callbackfailed)
 	commands[command] = {}
 	commands[command].perm = perm
+	commands[command].group = "superadmin"
 	commands[command].cmd = callback
 	commands[command].callbackfailed = callbackfailed
 
 	debugMsg("Admin command added: " .. command .. ", requires permission level: " .. perm)
 end)
 
+AddEventHandler('es:addGroupCommand', function(command, group, callback, callbackfailed)
+	commands[command] = {}
+	commands[command].perm = math.maxinteger
+	commands[command].group = group
+	commands[command].cmd = callback
+	commands[command].callbackfailed = callbackfailed
+
+	debugMsg("Group command added: " .. command .. ", requires group: " .. group)
+end)
+
 RegisterServerEvent('es:updatePositions')
 AddEventHandler('es:updatePositions', function(x, y, z)
 	if(Users[source])then
-		Users[source].coords = {['x'] = x, ['y'] = y, ['z'] = z}
+		Users[source]:setCoords(x, y, z)
 	end
 end)
 
@@ -161,6 +148,6 @@ end)
 commands['info'] = {}
 commands['info'].perm = 0
 commands['info'].cmd = function(source, args, user)
-	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^21.1.0")
+	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^23.2.0")
 	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Commands loaded: ^2" .. (returnIndexesInTable(commands) - 1))
 end

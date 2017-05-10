@@ -14,15 +14,21 @@
 			return x1 + x2;
 		}
 
+		var moneyIcon = "$"
+
 		window.onload = function(e){
 			// NUI Callback
 			window.addEventListener('message', function(event){
 				var item = event.data;
 
+				if(item.seticon == true)
+					moneyIcon = item.icon;
 				if(item.setmoney == true)
-					document.getElementById("cash").innerHTML = "<div><font style='color: rgb(0, 125, 0); font-weight: 700; margin-right: 6px;'>£</font>" + addCommas(item.money);
+					document.getElementById("cash").innerHTML = "<div><font style='color: rgb(0, 125, 0); font-weight: 700; margin-right: 6px;'>" + moneyIcon + "</font>" + addCommas(item.money);
 				if(item.addcash == true){
-					var element = $("<div class='tiny'>+<font style='color: rgb(0, 125, 0); font-weight: 700; margin-right: 6px;'>£</font>"+addCommas(item.money)+"</div>")
+					$(".tiny").remove();
+
+					var element = $("<div class='tiny'>+<font style='color: rgb(0, 125, 0); font-weight: 700; margin-right: 6px;'>" + moneyIcon + "</font>"+addCommas(item.money)+"</div>")
 					$("#money").append(element)
 
 					setTimeout(function(){
@@ -30,7 +36,9 @@
 					}, 1000)
 				}
 				if(item.removecash == true){
-					var element = $("<div class='tiny'>-<font style='color: rgb(250, 0, 0); font-weight: 700; margin-right: 6px;'>£</font>"+addCommas(item.money)+"</div>")
+					$(".tiny").remove();
+					
+					var element = $("<div class='tiny'>-<font style='color: rgb(250, 0, 0); font-weight: 700; margin-right: 6px;'>" + moneyIcon + "</font>"+addCommas(item.money)+"</div>")
 					$("#money").append(element)
 
 					setTimeout(function(){

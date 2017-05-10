@@ -33,3 +33,4 @@ function debugMsg(msg)
 end
 
 AddEventHandler("es:debugMsg", debugMsg)
+
