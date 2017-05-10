@@ -68,6 +68,8 @@ function MySQL._getFieldByName(self, reader, name)
 
 	if(typ == "System.DateTime")then
 		return reader:GetDateTime(name)
+	elseif(typ == "System.Double")then
+		return reader:GetDouble(name)
 	elseif(typ == "System.Int32")then
 		return reader:GetInt32(name)
 	else
