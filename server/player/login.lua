@@ -54,14 +54,18 @@ AddEventHandler("es:setPlayerData", function(user, k, v, cb)
 			if(k ~= "money") then
 				Users[user][k] = v
 
-				db.updateUser(Users[user]['identifier'], {[k] = v}, function(d)end)
+				db.updateUser(Users[user]['identifier'], {[k] = v}, function(d)
+					if d == true then
+						cb("Player data edited", true)
+					else
+						cb(d, false)
+					end
+				end)
 			end
 
 			if(k == "group")then
 				Users[user].group = groups[v]
 			end
-
-			cb("Player data edited.", true)
 		else
 			cb("Column does not exist!", false)
 		end

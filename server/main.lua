@@ -51,7 +51,7 @@ end)
 RegisterServerEvent('playerSpawn')
 AddEventHandler('playerSpawn', function()
 	if(justJoined[source])then
-		TriggerEvent("es:firstSpawn", source)
+		TriggerEvent("es:firstSpawn", source, Users[source])
 		justJoined[source] = nil
 	end
 end)
@@ -148,6 +148,6 @@ end)
 commands['info'] = {}
 commands['info'].perm = 0
 commands['info'].cmd = function(source, args, user)
-	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^23.2.1")
+	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Version: ^23.2.2")
 	TriggerClientEvent('chatMessage', source, 'SYSTEM', {255, 0, 0}, "^2[^3EssentialMode^2]^0 Commands loaded: ^2" .. (returnIndexesInTable(commands) - 1))
 end
